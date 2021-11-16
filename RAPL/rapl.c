@@ -59,6 +59,7 @@ long long read_msr(int fd, int which) {
 #define CPU_SKYLAKE2   94
 #define CPU_BROADWELL  77
 #define CPU_BROADWELL2  79
+#define CPU_WHISKEYLAKE 142
 #define CPU_KABYLAKE 158
 
 int detect_cpu(void) {
@@ -137,6 +138,9 @@ int detect_cpu(void) {
       break;
     case CPU_BROADWELL2:
       printf("Found BROADWELL2 CPU\n");
+      break;
+    case CPU_WHISKEYLAKE:
+      printf("Found WHISKYLAKE CPU\n");
       break;
     case CPU_KABYLAKE:
       printf("Found KABYLAKE CPU\n");
@@ -280,7 +284,7 @@ void rapl_before(FILE * fp,int core)
 
   /* not available on *Bridge-EP */
   if ((cpu_model==CPU_SANDYBRIDGE) || (cpu_model==CPU_IVYBRIDGE) ||
-  (cpu_model==CPU_HASWELL)) {
+  (cpu_model==CPU_HASWELL) || (cpu_model==CPU_WHISKEYLAKE)) {
      result=read_msr(fd,MSR_PP1_ENERGY_STATUS);
      pp1_before=(double)result*energy_units;
      // fprintf(fp,"PowerPlane1 (on-core GPU if avail) before: %.6fJ\n",pp1_before);
@@ -292,7 +296,7 @@ void rapl_before(FILE * fp,int core)
   /* Despite documentation saying otherwise, it looks like */
   /* You can get DRAM readings on regular Haswell          */
   if ((cpu_model==CPU_SANDYBRIDGE_EP) || (cpu_model==CPU_IVYBRIDGE_EP) ||
-  (cpu_model==CPU_HASWELL)) {
+  (cpu_model==CPU_HASWELL)  || (cpu_model==CPU_WHISKEYLAKE)) {
      result=read_msr(fd,MSR_DRAM_ENERGY_STATUS);
      dram_before=(double)result*energy_units;
      // fprintf(fp,"DRAM energy before: %.6fJ\n",dram_before);
@@ -320,7 +324,7 @@ void rapl_after(FILE * fp , int core)
 
   /* not available on SandyBridge-EP */
   if ((cpu_model==CPU_SANDYBRIDGE) || (cpu_model==CPU_IVYBRIDGE) ||
-  (cpu_model==CPU_HASWELL)) {
+  (cpu_model==CPU_HASWELL)  || (cpu_model==CPU_WHISKEYLAKE)) {
      result=read_msr(fd,MSR_PP1_ENERGY_STATUS);
      pp1_after=(double)result*energy_units;
      fprintf(fp,"%.18f, ",pp1_after-pp1_before);     // GPU
@@ -329,7 +333,7 @@ void rapl_after(FILE * fp , int core)
     fprintf(fp," , ");
 
   if ((cpu_model==CPU_SANDYBRIDGE_EP) || (cpu_model==CPU_IVYBRIDGE_EP) ||
-  (cpu_model==CPU_HASWELL)) {
+  (cpu_model==CPU_HASWELL  || (cpu_model==CPU_WHISKEYLAKE))) {
      result=read_msr(fd,MSR_DRAM_ENERGY_STATUS);
      dram_after=(double)result*energy_units;
      fprintf(fp,"%.18f, ",dram_after-dram_before);     // DRAM

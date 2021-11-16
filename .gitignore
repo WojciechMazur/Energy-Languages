@@ -3,6 +3,12 @@
 tmp.*
 .NETCore*
 *.class
+*.tasty
 lshw
 sysinfo.*
 
+Scala/.gitignore
+**/.vscode/
+**/.metals/
+**/.bsp/
+**/.bloop/
