@@ -19,31 +19,27 @@ object fasta {
   val IUB = (
     "acgtBDHKMNRSVWY".getBytes,
     (Array(0.27, 0.12, 0.12, 0.27) ++ Array.fill(11)(0.02))
-      .scanLeft(0d)(_ + _)
-      .tail
   )
   val HomoSapiens = (
     "acgt".getBytes,
     Array(0.3029549426680, 0.1979883004921, 0.1975473066391, 0.3015094502008)
-      .scanLeft(0d)(_ + _)
-      .tail
   )
 
   def main(args: Array[String]) = {
     val n = args(0).toInt
     run(n)
   }
-  
+
   def run(n: Int): Unit = {
     val s = new FastaOutputStream(System.out)
 
-    s.writeDescription("ONE Homo sapiens alu")
+    s.write(">ONE Homo sapiens alu\n".getBytes)
     s.writeRepeating(ALU, n * 2)
 
-    s.writeDescription("TWO IUB ambiguity codes")
+    s.write(">TWO IUB ambiguity codes\n".getBytes)
     s.writeRandom(IUB, n * 3)
 
-    s.writeDescription("THREE Homo sapiens frequency")
+    s.write(">THREE Homo sapiens frequency\n".getBytes)
     s.writeRandom(HomoSapiens, n * 5)
 
     s.close
@@ -53,9 +49,8 @@ object fasta {
 // Extend the Java BufferedOutputStream class
 class FastaOutputStream(out: OutputStream) extends BufferedOutputStream(out) {
   private final val LineLength = 60
+  private final val BufLines = 100
   private final val EOL = '\n'.toByte
-
-  def writeDescription(desc: String) = write(s">$desc\n".getBytes)
 
   def writeRepeating(alu: Array[Byte], length: Int) = {
     val limit = alu.length
@@ -77,24 +72,52 @@ class FastaOutputStream(out: OutputStream) extends BufferedOutputStream(out) {
   }
 
   def writeRandom(distribution: (Array[Byte], Array[Double]), length: Int) = {
-    val (bytes, cuml) = distribution
-    def selectAndWriteRandom(): Unit = {
-      val byte = bytes(selectRandom(cuml))
-      bufferedWrite(byte)
-    }
-
-    var n = length
-    while(n > 0){
-      val m = n.min(LineLength)
-      var i = 0
-      while (i < m) {
-        selectAndWriteRandom()
-        i += 1
+    val (symb, probability) = distribution
+    val hash = buildHash(symb, probability)
+    val buffer = Array.fill(BufLines * (LineLength + 1))(EOL)
+    val buffers = length / LineLength / BufLines
+    for (i <- 0 until buffers) {
+      for (j <- 0 until BufLines) {
+        for (k <- 0 until LineLength) {
+          val v = random()
+          buffer(j * (LineLength + 1) + k) = hash(v)
+        }
       }
-
-      bufferedWrite(EOL)
-      n -= LineLength
+      write(buffer, 0, (LineLength + 1) * BufLines)
     }
+
+    val lines = length / LineLength - buffers * BufLines
+    for (j <- 0 until lines) {
+      for (k <- 0 until LineLength) {
+        val v = random()
+        buffer(j * (LineLength + 1) + k) = hash(v)
+      }
+    }
+    val partials = length - LineLength * lines - buffers * BufLines * LineLength
+    for (k <- 0 until partials) {
+      val v = random()
+      buffer(lines * (LineLength + 1) + k) = hash(v)
+    }
+    write(buffer, 0, lines * (LineLength + 1) + partials)
+
+    if (length % LineLength != 0) write(EOL)
+  }
+
+  private def buildHash(symb: Array[Byte], probability: Array[Double]): Array[Byte] = {
+    val result = Array.ofDim[Byte](IM)
+    val len = symb.length
+    var sum = probability(0)
+    var i, j = 0
+    while (i < IM && j < len) {
+      val r = 1.0 * i / IM
+      if (r >= sum) {
+        j += 1
+        sum += probability(j)
+      }
+      result(i) = symb(j)
+      i += 1
+    }
+    return result
   }
 
   private def bufferedWrite(b: Byte): Unit = {
@@ -106,19 +129,14 @@ class FastaOutputStream(out: OutputStream) extends BufferedOutputStream(out) {
     }
   }
 
-  private final def selectRandom(cuml: Array[Double]): Int = {
-    val r = randomTo(1.0)
-    cuml.indexWhere(r < _)
-  }
-
   private final val IM = 139968
   private final val IA = 3877
   private final val IC = 29573
   private final val IMinv = 1.0 / IM
   private var seed = 42
 
-  private final def randomTo(max: Double) = {
+  private final def random() = {
     seed = (seed * IA + IC) % IM
-    max * seed * IMinv
+    seed
   }
 }
