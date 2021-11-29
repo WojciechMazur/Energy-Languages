@@ -23,17 +23,18 @@ object pidigits {
       t = t
     )
 
-    def extract: Option[Int] = {
+    def extract: Int = {
       val (y, rem) = (q * 3 + r) /% t
-      if ((rem + q) < t) Some(y.intValue) else None
+      if ((rem + q) < t) y.intValue else -1
     }
   }
 
   def pi_digits = {
     /*  uses only ONE bigint division instead of TWO*/
-    def digits(z: LFT, k: Int): LazyList[Int] = z.extract match {
-      case Some(y) => LazyList.cons(y, digits(z next y, k))
-      case None    => digits(z compose k, k + 1)
+    def digits(z: LFT, k: Int): LazyList[Int] = {
+      val y = z.extract
+      if (y == -1) digits(z compose k, k + 1)
+      else LazyList.cons(y, digits(z next y, k))
     }
 
     digits(new LFT(1, 0, 1), 1)
@@ -50,8 +51,8 @@ object pidigits {
     val limit = args(0).toInt
     run(limit)
   }
-  
-  def run(limit: Int): Unit ={
+
+  def run(limit: Int): Unit = {
     for {
       (digits, batchIdx) <- by(pi_digits.take(limit), 10).zipWithIndex
       idx = 10 * batchIdx + digits.length

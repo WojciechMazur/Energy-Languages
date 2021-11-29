@@ -13,6 +13,10 @@ import scala.io.Source
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
+import java.io.BufferedInputStream
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.nio.charset.StandardCharsets
 
 object knucleotide {
   def main(args: Array[String]): Unit = {
@@ -50,16 +54,19 @@ object knucleotide {
     val description = ">" + name
     val builder = Array.newBuilder[Byte]
     builder.sizeHint(4 << 24)
-    val lines = Source
-      .fromInputStream(input)
-      .getLines()
-      .dropWhile {
-        !_.startsWith(description)
-      }
-      .drop(1)
-      .takeWhile(!_.startsWith(">"))
-    lines.foreach(builder ++= _.getBytes)
-    builder.result()
+    val in = new BufferedReader(new InputStreamReader(input, StandardCharsets.ISO_8859_1))
+    var line: String = null
+    while ({
+      line = in.readLine()
+      !line.startsWith(description)
+    }) ()
+    while ({
+      line = in.readLine()
+      line != null && !line.startsWith(">")
+    }) {
+      builder.addAll(line.getBytes)
+    }
+    builder.result
   }
 
   class Counter(var n: Int)
@@ -87,8 +94,7 @@ object knucleotide {
     val builder =
       SortedSet.newBuilder[(String, Double)](
         Ordering
-          .by[(String, Double), Double](_._2)
-          .reverse
+          .by[(String, Double), Double](- _._2)
       )
     val sum = count.values
       .foldLeft(0.0)(_ + _.n)
@@ -118,8 +124,8 @@ object knucleotide {
     n
   }
 
-  def decode(n: Long, length: Int): Array[Byte] = {
-    val bs = Array.ofDim[Byte](length)
+  def decode(n: Long, length: Int): Array[Char] = {
+    val bs = new Array[Char](length)
     var nn = n
     var i = length - 1
     while (i >= 0) {
