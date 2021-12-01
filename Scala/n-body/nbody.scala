@@ -73,7 +73,7 @@ class JovianSystem() extends NBodySystem {
       mass = 5.15138902046611451e-05 * SOLAR_MASS
     )
 
-    val allBodies = List(sun, jupiter, saturn, uranus, neptune)
+    val allBodies = Array(sun, jupiter, saturn, uranus, neptune)
 
     for {
       body <- allBodies
@@ -89,7 +89,7 @@ class JovianSystem() extends NBodySystem {
 
 abstract class NBodySystem {
   import NBodySystem._
-  protected def bodies: Seq[Body]
+  protected def bodies: Array[Body]
 
   def energy: Double = {
     def energyBetween(left: Body, right: Body): Double = {
@@ -126,8 +126,9 @@ abstract class NBodySystem {
         val dy = body.y - other.y
         val dz = body.z - other.z
 
-        val distance = sqrt(dx * dx + dy * dy + dz * dz)
-        val mag = dt / (distance * distance * distance)
+        val distanceSquared = dx * dx + dy * dy + dz * dz
+        val distance = sqrt(distanceSquared)
+        val mag = dt / (distanceSquared * distance)
 
         body.advance(dx, dy, dz, -other.mass * mag)
         other.advance(dx, dy, dz, body.mass * mag)
