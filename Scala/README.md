@@ -27,7 +27,7 @@ Makefile contains settings that can be used when running them:
 - `output` - pass output redirect options, eg `output=>/dev/null` to ignore output as it logging to console can significetlly slow down execution
 - `mode` - use non standard benchmark implementation (applies only to `compile`), supported modes: 
   - `mode=idiomatic` - Use Scala idiomatic implementation
-- `scalaPath` - path to `scala` binary
+- `scalaPath` - path to `scala` binary. Default value assumes that `scala` has been installed via SDKMAN.
 - `scalacPath` - path to `scalac` binary
 
 # Makefiles management
