@@ -21,7 +21,7 @@ Additionally, we define additional tasks that are specific to Scala:
 
 # Makefile configuration
 Makefile contains settings that can be used when running them:
-- `configName` - Name of the config to use, results with written to file with name derived from this value.
+- `configName` - Name of the config to use, results will be written to file with name derived from this value.
 - `warmup-iterations` - number of initial warmup iterations (used only in `measureWithWarmup`)
 - `warmup-measure` - should collect measurments when performing warmup iterations, results would be logged using `<benchmark-name>_warmup` label in the results (used only in `measureWithWarmup`)
 - `output` - pass output redirect options, eg `output=>/dev/null` to ignore output as it logging to console can significetlly slow down execution
