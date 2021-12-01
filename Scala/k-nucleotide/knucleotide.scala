@@ -45,7 +45,7 @@ object knucleotide {
         Seq("ggt", "ggta", "ggtatt", "ggtattttaatt", "ggtattttaatttatagt")
       )
     } {
-      val n = c.get(encode(s.getBytes, 0, s.length)).fold(0)(_.n)
+      val n = c.get(encode(toCodes(s.getBytes), 0, s.length)).fold(0)(_.n)
       printf("%d\t%s%n", n, s.toUpperCase)
     }
   }
@@ -66,7 +66,7 @@ object knucleotide {
     }) {
       builder.addAll(line.getBytes)
     }
-    builder.result
+    toCodes(builder.result)
   }
 
   class Counter(var n: Int)
@@ -106,19 +106,28 @@ object knucleotide {
     builder.result()
   }
 
+  private val codes = Array[Byte](-1, 0, -1, 1, 3, -1, -1, 2)
+  private val nucleotides = Array[Char]('A', 'C', 'G', 'T')
+
+  // Convert array of nucleotides to codes (0 = A, 1 = C, 2 = G, 3 = T)
+  def toCodes(sequence: Array[Byte]): Array[Byte] = {
+    val length = sequence.length
+    val result = new Array[Byte](length)
+    var i = 0
+    while (i < length) {
+      result(i) = codes(sequence(i) & 0x7)
+      i += 1
+    }
+    result
+  }
+
   def encode(sequence: Array[Byte], offset: Int, length: Int): Long = {
     // assert(length <= 32)
     var n = 0L
-    var i = 0
-    while (i < length) {
-      val m = (sequence(offset + i): @switch) match {
-        case 'a' => 0
-        case 'c' => 1
-        case 'g' => 2
-        case 't' => 3
-      }
+    var i = offset
+    while (i < offset + length) {
       n <<= 2
-      n |= m
+      n |= sequence(i)
       i += 1
     }
     n
@@ -129,12 +138,7 @@ object knucleotide {
     var nn = n
     var i = length - 1
     while (i >= 0) {
-      bs(i) = ((nn & 3).toInt: @switch) match {
-        case 0 => 'a'
-        case 1 => 'c'
-        case 2 => 'g'
-        case 3 => 't'
-      }
+      bs(i) = nucleotides((nn & 3).toInt)
       nn >>= 2
       i -= 1
     }
