@@ -7,7 +7,7 @@
 import java.io.InputStream
 
 import scala.annotation.switch
-import scala.collection.immutable.SortedSet
+import scala.collection.immutable.{ ArraySeq, SortedSet }
 import scala.collection.mutable
 import scala.io.Source
 import scala.concurrent._
@@ -38,14 +38,14 @@ object knucleotide {
         Seq("ggt", "ggta", "ggtatt", "ggtattttaatt", "ggtattttaatttatagt")
       )
     } {
-      val n = c.get(encode(s.getBytes, 0, s.length)).fold(0)(_.n)
+      val n = c.get(encode(toCodes(s.getBytes.toIndexedSeq), 0, s.length)).fold(0)(_.n)
       printf("%d\t%s%n", n, s.toUpperCase)
     }
   }
 
-  def extractSequence(input: InputStream, name: String): Array[Byte] = {
+  def extractSequence(input: InputStream, name: String): IndexedSeq[Byte] = {
     val description = ">" + name
-    val builder = Array.newBuilder[Byte]
+    val builder = ArraySeq.newBuilder[Byte]
     builder.sizeHint(4 << 24)
     val lines = Source
       .fromInputStream(input)
@@ -56,13 +56,13 @@ object knucleotide {
       .drop(1)
       .takeWhile(!_.startsWith(">"))
     lines.foreach(builder ++= _.getBytes)
-    builder.result()
+    toCodes(builder.result())
   }
 
   class Counter(var n: Int)
 
   def count(
-      sequence: Array[Byte],
+      sequence: IndexedSeq[Byte],
       length: Int
   ): Future[mutable.LongMap[Counter]] = Future {
     val counters = mutable.LongMap.empty[Counter]
@@ -86,41 +86,36 @@ object knucleotide {
     val builder = SortedSet.newBuilder[(String, Double)]
     val sum = count.values.foldLeft(0.0)(_ + _.n)
     for ((k, v) <- count) {
-      val key = new String(decode(k, length))
+      val key = decode(k, length)
       val value = v.n / sum
       builder += ((key, value))
     }
     builder.result()
   }
 
-  def encode(sequence: Array[Byte], offset: Int, length: Int): Long = {
+  private val codes = ArraySeq[Byte](-1, 0, -1, 1, 3, -1, -1, 2)
+  private val nucleotides = ArraySeq('A', 'C', 'G', 'T')
+
+  // Convert array of nucleotides to codes (0 = A, 1 = C, 2 = G, 3 = T)
+  def toCodes(sequence: IndexedSeq[Byte]): IndexedSeq[Byte] =
+    sequence.map(byte => codes(byte & 0x7))
+
+  def encode(sequence: IndexedSeq[Byte], offset: Int, length: Int): Long = {
     // assert(length <= 32)
     0.until(length)
       .foldLeft(0L) { case (n, i) =>
-        val m = (sequence(offset + i): @switch) match {
-          case 'a' => 0
-          case 'c' => 1
-          case 'g' => 2
-          case 't' => 3
-        }
+        val m = sequence(offset + i)
         n << 2 | m
       }
   }
 
-  def decode(n: Long, length: Int): Array[Byte] = {
-    val bs = Array.ofDim[Byte](length)
+  def decode(n: Long, length: Int): String = {
+    val bs = new Array[Char](length)
     0.until(length)
-      .reverse
-      .foldLeft(n) { case (n, i) =>
-        val value = ((n & 3).toInt: @switch) match {
-          case 0 => 'a'
-          case 1 => 'c'
-          case 2 => 'g'
-          case 3 => 't'
-        }
-        bs(i) = value.toByte
+      .foldRight(n) { case (i, n) =>
+        bs(i) = nucleotides((n & 3).toInt)
         n >> 2
       }
-    bs
+    new String(bs)
   }
 }
